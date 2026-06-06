@@ -1,27 +1,25 @@
-// Patch MUST run before require('electron')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Module = require('module')
-const origResolve = Module._resolveFilename.bind(Module)
-Module._resolveFilename = (request: string, ...args: unknown[]) => {
-  if (request === 'electron') return request
-  return origResolve(request, ...args)
-}
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { app, BrowserWindow, globalShortcut, ipcMain, dialog, screen } = require('electron')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { join } = require('path')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { readFileSync, writeFileSync } = require('fs')
+import { app, BrowserWindow, globalShortcut, ipcMain, dialog, screen } from 'electron'
+import { join } from 'path'
+import { readFileSync, writeFileSync } from 'fs'
+import { GLOBAL_HOTKEY } from '@shared/config'
 
 const isDev = process.env.NODE_ENV === 'development'
 
-let mainWindow: Electron.BrowserWindow | null = null
-let isEditMode = false
+let mainWindow: BrowserWindow | null = null
+let isEditMode = true
 
 function createWindow(): void {
   const primaryDisplay = screen.getPrimaryDisplay()
-  const { width, height, x, y } = primaryDisplay.bounds
+  const bounds = primaryDisplay.bounds
+  const workArea = primaryDisplay.workArea
+
+  const width = bounds.width > 0 ? bounds.width : workArea.width
+  const height = bounds.height > 0 ? bounds.height : workArea.height
+  const x = bounds.x
+  const y = bounds.y
+
+  console.log('[circle-display] display bounds:', bounds)
+  console.log('[circle-display] window size:', { width, height, x, y })
 
   mainWindow = new BrowserWindow({
     width,
@@ -29,6 +27,7 @@ function createWindow(): void {
     x,
     y,
     transparent: true,
+    backgroundColor: '#00000000',
     frame: false,
     alwaysOnTop: true,
     skipTaskbar: true,
@@ -41,12 +40,13 @@ function createWindow(): void {
     }
   })
 
-  mainWindow.setIgnoreMouseEvents(true, { forward: true })
+  mainWindow.setIgnoreMouseEvents(false)
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   mainWindow.setAlwaysOnTop(true, 'screen-saver')
 
   if (isDev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
@@ -77,7 +77,7 @@ function toggleMode(): void {
 app.whenReady().then(() => {
   createWindow()
 
-  globalShortcut.register('CommandOrControl+Alt+Shift+1', () => {
+  globalShortcut.register(GLOBAL_HOTKEY, () => {
     toggleMode()
   })
 
@@ -94,7 +94,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-ipcMain.handle('save-file', async (_event: Electron.IpcMainInvokeEvent, jsonData: string) => {
+ipcMain.handle('save-file', async (_event, jsonData: string) => {
   const { filePath } = await dialog.showSaveDialog({
     title: 'Lưu hình',
     defaultPath: 'shapes.json',
@@ -116,6 +116,10 @@ ipcMain.handle('open-file', async () => {
   return { success: true, data: content }
 })
 
-ipcMain.on('request-mode', (event: Electron.IpcMainEvent) => {
+ipcMain.on('request-mode', (event) => {
   event.reply('mode-changed', isEditMode ? 'edit' : 'display')
+})
+
+ipcMain.on('quit-app', () => {
+  app.quit()
 })

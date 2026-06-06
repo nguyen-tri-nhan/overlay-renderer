@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 const api = {
+  quit: () => ipcRenderer.send('quit-app'),
   onModeChanged: (callback: (mode: 'edit' | 'display') => void) => {
     const handler = (_event: Electron.IpcRendererEvent, mode: 'edit' | 'display') => callback(mode)
     ipcRenderer.on('mode-changed', handler)

@@ -3,10 +3,12 @@ import { Canvas } from './components/Canvas'
 import { Toolbar } from './components/Toolbar'
 import { useShapes } from './hooks/useShapes'
 import { Mode, Tool, Shape } from './types'
+import { SHORTCUTS } from '@shared/config'
 
 declare global {
   interface Window {
     api: {
+      quit: () => void
       onModeChanged: (cb: (mode: 'edit' | 'display') => void) => () => void
       saveFile: (json: string) => Promise<{ success: boolean; filePath?: string }>
       openFile: () => Promise<{ success: boolean; data?: string }>
@@ -15,13 +17,14 @@ declare global {
 }
 
 export default function App() {
-  const [mode, setMode] = useState<Mode>('display')
-  const [tool, setTool] = useState<Tool>('circle')
+  const [mode, setMode] = useState<Mode>('edit')
+  const [tool, setTool] = useState<Tool>('select')
   const [color, setColor] = useState('#ff0000')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const { shapes, addShape, deleteShape, clearAll, loadShapes } = useShapes()
+  const { shapes, addShape, deleteShape, updateShape, clearAll, loadShapes } = useShapes()
 
   useEffect(() => {
+    if (!window.api) return
     const cleanup = window.api.onModeChanged((m) => {
       setMode(m)
       if (m === 'display') setSelectedId(null)
@@ -31,17 +34,18 @@ export default function App() {
 
   // Keyboard shortcuts
   useEffect(() => {
+    const mod = (e: KeyboardEvent) => e.ctrlKey || e.metaKey
     const handler = (e: KeyboardEvent) => {
       if (mode !== 'edit') return
-      if (e.key === 'Delete' && selectedId) {
+      if (e.key === SHORTCUTS.delete.key && selectedId) {
         deleteShape(selectedId)
         setSelectedId(null)
       }
-      if (e.ctrlKey && e.key === 's') {
+      if (mod(e) && e.key === SHORTCUTS.save.key) {
         e.preventDefault()
         handleSave()
       }
-      if (e.ctrlKey && e.key === 'o') {
+      if (mod(e) && e.key === SHORTCUTS.open.key) {
         e.preventDefault()
         handleLoad()
       }
@@ -51,10 +55,12 @@ export default function App() {
   }, [mode, selectedId, shapes])
 
   const handleSave = useCallback(async () => {
+    if (!window.api) return
     await window.api.saveFile(JSON.stringify(shapes, null, 2))
   }, [shapes])
 
   const handleLoad = useCallback(async () => {
+    if (!window.api) return
     const result = await window.api.openFile()
     if (result.success && result.data) {
       try {
@@ -83,6 +89,7 @@ export default function App() {
         selectedId={selectedId}
         onAddShape={addShape}
         onSelectShape={setSelectedId}
+        onUpdateShape={updateShape}
         isEditMode={mode === 'edit'}
       />
       <Toolbar
@@ -101,6 +108,7 @@ export default function App() {
         onClearAll={handleClearAll}
         onSave={handleSave}
         onLoad={handleLoad}
+        onQuit={() => window.api?.quit()}
       />
     </>
   )

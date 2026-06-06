@@ -1,4 +1,4 @@
-export type Tool = 'circle' | 'ellipse' | 'dot'
+export type Tool = 'select' | 'circle' | 'ellipse' | 'dot'
 export type Mode = 'edit' | 'display'
 
 export interface Point {

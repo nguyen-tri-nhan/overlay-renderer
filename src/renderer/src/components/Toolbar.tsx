@@ -1,4 +1,5 @@
 import { Tool, Mode } from '../types'
+import { SHORTCUTS } from '@shared/config'
 
 interface Props {
   mode: Mode
@@ -11,9 +12,11 @@ interface Props {
   onClearAll: () => void
   onSave: () => void
   onLoad: () => void
+  onQuit: () => void
 }
 
 const TOOLS: { value: Tool; label: string }[] = [
+  { value: 'select', label: '↖ Select' },
   { value: 'circle', label: 'Circle' },
   { value: 'ellipse', label: 'Ellipse' },
   { value: 'dot', label: 'Dot' }
@@ -31,7 +34,8 @@ export function Toolbar({
   onDeleteSelected,
   onClearAll,
   onSave,
-  onLoad
+  onLoad,
+  onQuit
 }: Props) {
   if (mode === 'display') return null
 
@@ -39,7 +43,7 @@ export function Toolbar({
     <div
       style={{
         position: 'fixed',
-        top: 16,
+        top: 48,
         left: '50%',
         transform: 'translateX(-50%)',
         display: 'flex',
@@ -112,7 +116,13 @@ export function Toolbar({
 
       <Divider />
 
-      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>Ctrl+Alt+Shift+1 to hide</span>
+      <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>{SHORTCUTS.toggleMode.display} to hide</span>
+
+      <Divider />
+
+      <ActionBtn onClick={onQuit} title="Thoát app" style={{ color: '#f87171' }}>
+        ✕ Quit
+      </ActionBtn>
     </div>
   )
 }
@@ -163,11 +173,13 @@ function ActionBtn({
   onClick,
   disabled,
   title,
+  style,
   children
 }: {
   onClick: () => void
   disabled?: boolean
   title?: string
+  style?: React.CSSProperties
   children: React.ReactNode
 }) {
   return (
@@ -183,7 +195,8 @@ function ActionBtn({
         fontSize: 12,
         padding: '4px 10px',
         cursor: disabled ? 'default' : 'pointer',
-        WebkitAppRegion: 'no-drag' as never
+        WebkitAppRegion: 'no-drag' as never,
+        ...style
       }}
     >
       {children}

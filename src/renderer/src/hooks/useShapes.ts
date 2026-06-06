@@ -16,9 +16,13 @@ export function useShapes() {
     setShapes([])
   }, [])
 
+  const updateShape = useCallback((id: string, updates: Partial<Shape>) => {
+    setShapes((prev) => prev.map((s) => (s.id === id ? ({ ...s, ...updates } as Shape) : s)))
+  }, [])
+
   const loadShapes = useCallback((newShapes: Shape[]) => {
     setShapes(newShapes)
   }, [])
 
-  return { shapes, addShape, deleteShape, clearAll, loadShapes }
+  return { shapes, addShape, deleteShape, updateShape, clearAll, loadShapes }
 }
