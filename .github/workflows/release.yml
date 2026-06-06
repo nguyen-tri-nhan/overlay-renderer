@@ -5,8 +5,19 @@ on:
     branches: [release]
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: release/*.exe
+            label: windows-exe
+          - os: macos-latest
+            artifact: release/*.dmg
+            label: macos-dmg
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -17,34 +28,17 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
 
-      - name: Build & package Windows
+      - name: Build & package
         run: |
           npx electron-vite build
-          npx electron-builder --win --publish never
+          npx electron-builder --publish never
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: windows-exe
-          path: release/*.exe
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - run: npm ci --legacy-peer-deps
-
-      - name: Build & package macOS
-        run: |
-          npx electron-vite build
-          npx electron-builder --mac --publish never
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-dmg
-          path: release/*.dmg
+          tag_name: release-${{ github.run_number }}
+          name: "Release #${{ github.run_number }}"
+          files: ${{ matrix.artifact }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
